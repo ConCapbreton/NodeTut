@@ -1,0 +1,122 @@
+Dave Gray youtube tutorial (link below) for Node.js completed 30/09/2024 
+
+A comprehensive Node.js project that goes from complete beginner to hosting a database on MongoDB
+
+At the beginning we installed nodemon which effectively runs your index file everytime you save (to prevent you from having to do this yourself in the terminal). In the package.json you can create scripts to tell nodemon which file is your index file, to run after any changes ("scripts": {"start": "node t5server", "dev": "nodemon t4/t5server"}
+
+t1: an introduction to some node.js specificities:
+module.exports vs exports.(write function here)  
+const variable = require('filename') for importing variables (destructuring also possible by exporting and importing variables in curly braces {}
+const os = require('os') The node:os module provides operating system-related utility methods and properties (https://nodejs.org/api/os.html#os).
+const path = require('path') The node:path module provides utilities for working with file and directory paths. (https://nodejs.org/api/path.html#path)
+
+t2: introduces the async nature of const fs = require('fs') The node:fs module enables interacting with the file system in a way modeled on standard POSIX functions. (https://nodejs.org/api/fs.html#file-system)
+Using fs.readfile / writefile / appendFile / rename and the path.join you can interact with the file tree very similarly to an API 
+As with an API this is async. To avoid callback hell (where you dont know which function will complete first) you can use fs.promises  
+index2.js has the async function fileOps inside you have await fsPromises.unlink (in this context deletes the file). then await fsPromises.writeFile .appendFile .rename .readFile
+using await plus fsPromises ensures that functions are called one by one (once the previous function is completed). In the fileOps function this is important as subsequent functions require that previous functions are complete.  
+We also see node's process for the first time: The process object in Node.js is a global object that can be accessed inside any module without requiring it. The process object provides information about, and control over, the current Node.js process. It is an eventEmitter: process.on('event to be listened for - see docs for options', (variable associated with event) => {code for what to do with this event})
+We called process.exit(1) which once all exit listeners have finished running terminates the Node.js
+We also saw the fs.existsSync('filename') which checks to see if a file path exists. We coded to create a directory if it doesnt exist, fs.mkdir() abd remove it if it does exist, fs.rmdir
+
+t3: we created an EventEmitter using const EventEmitter = require('events'), class MyEmitter extends EventEmitter {} and const myEmitter = new MyEmitter() 
+the used myEmitter.on('log', (msg) => {logEvents(msg)})
+the 'log' event that was being listened for (myEmitter.on) was created by the myEmitter.emit('log', 'Log event emitted') - this was inside the setTimeout function but that wasnt really necessary. 
+Effectively the myEmitter.emit is called every time the index3 file is read (so any time there is a change / the file is saved nodemon does this). myEmitter.on is listening for the event that is emitted and calls the logEvents function passing the msg (which was defined in the myEmitter.emit as 'Log event emitted').
+The logEvents function creates an eventLog.txt file (if it doesnt already exist) and then writes the defined "logItem" in this file using fsPromises.appendFile
+We installed npm i uuid 
+const {v4: uuid} = require('uuid') with ${uuid()}  
+This creates a unique id that was included with each log entry
+
+t4 (inclusive up to t15 / the end of the tutorial):
+Summary: 
+There were two outcomes of this project: 
+1. Creation of a server that displayed different html pages depending on the url 
+2. Creation of a database on MongoDB that had a list of users (the people accessing this server) and employees (data only) 
+The code includes CRUD operations for users (although user permissions have to be manually entered on MongoDB)
+The code includes CRUD operations for employees (depending on the users permissions they only have access to certain CRUD operations for the employee data base)
+
+Overview of files and folders:
+
+SIMPLE FOLDERS: 
+"data" holds a json file with the employee list (this file was only used during development, once MongoDB was being used this data was stored there and the data folder became redundant)
+"views" folder holds the html files that are displayed depending on the url entered
+"public" folder holds static files (.css, .img, .txt) that are used by html files in the views folder
+"logs" holds the txt file where event logs are written
+
+MORE COMPLEX FOLDERS: 
+
+"config":
+- "allowedOrigins" "corsOptions": is a list of urls from which your MongoDB API can be accessed (which improves security).
+- "dbConn": is the code to connect to MongoDB using mongoose
+- "roles": just a list of the user roles and their respective codes
+
+"controllers":
+- "authoController" checks users credentials on login, if successful issues refresh and access Tokens. const bcrypt = require('bcrypt') is used to encrypt password
+- "employeesController" holds CRUD operations for employees
+- "logoutController" deletes Tokens when a user logs out and updates MongoDB accordingly
+- "refreshTokenController" creation of a refresh and access token
+- "registerController" handles the creation of a new user on MongoDB (uses bcrypt to encrpt their password)
+
+"middleware" the functions that are added to the express app object are here. These are the functions that happen inbetween the client and the backend, for example: 
+- "credentials" checks that the client is accessing the database from an allowed url
+- "logEvents" logs each access to the database (written to the reqLog.txt file in the logs folder)
+- "verifyJWT" makes sure the user has the right tokens to complete the request they have sent
+- "verifyRoles" makes sure the user has the right roles to complete the request they have sent
+- "errorHandler" handles any errors that might occur (note no next() function as this if this function is run then nothing happens afterwards
+
+"model" files define the Schema (using mongoose) to define the data structures for employees and users (including roles and refreshToken) that will be stored on MongoDB
+
+"routes" files hold the routes (defined using const router = express.Router()) for the html pages stored in views
+
+"routes/api" files hold the routes (defined using const router = express.Router()) for interactions with the api (MongoDB), the second argument are the controller functions that determine what happens when the route is requested.  
+
+Files: 
+".env" holds environment varialbles (to be kept secret), for this project the Token request codes and the database URI. process.env.SECRET_CONSTANT_NAME is used in those files where you want to import these constants
+
+"t5server.js" this file manages all of the functions written in the project. 
+The order functions are written is critically important. 
+First you connect to MongoDB
+then app.use() is used to load the app object (it is referred to as a custom middle middleware logger)
+The functions loaded onto the app object are: 
+the logger (to log events)
+credentials followed by cors(corsOptions) (which together define which websites can access the MongoDB database)
+express.json() cookieParser()
+express.static to make the static files in the public folder available 
+then the API routes are defined 
+any API route listed after the verifyJWT function requires the user to have a token
+app.all is then used to define what to do incase of a 404 error (not found) followed by the errorHandler function 
+Lastly mongoose.connection.once() is called which Adds a one-time listener function for the event named eventName. It returns a reference to the EventEmitter, so that calls can be chained.
+when you use 'once' it signifies that the event will be called only once i.e the first time the event occurred like here in this case the first time when the connection is opened ,it will not occur once per request but rather once when the mongoose connection is made with the db (while the 'on' signifies the event will be called every time that it occurred).
+
+THUNDER CLIENT TESTS: 
+
+REGISTER USER:
+post & register
+{"user": "connor", "pwd": "Aa$12345"}
+{"user": "walt1", "pwd": "Aa$12345"}
+
+AUTHENTICATE USER
+post & auth
+{"user": "walt1", "pwd": "Aa$12345"}
+
+ADD AN EMPLOYEE
+post & employees
+{"firstname": "Jerry", "lastname": "Smith"}
+
+GET AN EMPLOYEE
+get & employees/id (token in bearer field and body empty) eg employees/66fabcbfc29d910ad39404c8 for Jerry Smith
+
+GET ALL EMPLOYEES 
+get & employees (token in bearer)
+
+EDIT AN EMPLOYEE
+Put & employees
+id and combination of firstname / lastname with the new value for the edit
+eg {"id": "66fabcbfc29d910ad39404c8", "firstname": "Chicken"} will change Jerry Smith's name to chicken smith
+
+DELETE AN EMPLOYEE
+Delete and employees
+id eg {"id": "66fabcbfc29d910ad39404c8"}
+
+link: https://www.youtube.com/watch?v=f2EqECiTBL8
