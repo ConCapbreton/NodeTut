@@ -4,7 +4,7 @@ OVERVIEW
 
 A comprehensive Node.js project that goes from complete beginner to a final project which comprises: 
 
-1. The reation of a server that displayed different html pages depending on the url 
+1. The creation of a server that displayed different html pages depending on the url 
 2. The creation of a database on MongoDB that had a list of users (the people accessing this server) and employees (data only) 
 The code includes CRUD operations for users (although user permissions have to be manually entered on MongoDB)
 The code includes CRUD operations for employees (depending on the users permissions they only have access to certain CRUD operations for the employee data base)
